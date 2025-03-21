@@ -60,12 +60,9 @@ jobs:
             echo "Could not determine GitHub username for committer."
             exit 1
           fi
-          # Get all merged PRs in `dev`
-          MERGED_PRS=$(git log --merges --pretty=format:"- %s" origin/main..origin/dev | grep -oE '#[0-9]+' || echo "No merged PRs.")
 
           echo "GH_USERNAME=$GH_USERNAME" >> $GITHUB_ENV
           echo "Committer GitHub Username: $GH_USERNAME"
-          echo "Merged: $MERGED_PRS" >> $GITHUB_ENV
 
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -96,5 +93,11 @@ jobs:
                     $MERGED_PRS
                    " \
             --reviewer "abisatyaw" \
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Pull Request Description
+        run: |
+          echo "hi"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
