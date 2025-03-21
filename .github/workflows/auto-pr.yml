@@ -1,9 +1,9 @@
 name: Auto PR dev2main
 
 on:
-  schedule:
-    - cron: "0 12 * * *"
-  workflow_dispatch:
+  push:
+    branches:
+      - dev
 
 jobs:
   create-pr:
@@ -30,4 +30,3 @@ jobs:
           title: "Auto PR: Merge dev into main"
           body: "This PR was automatically created because 'main' is behind 'dev' by ${{ env.BEHIND_COMMITS }} commits."
           draft: false
-          
