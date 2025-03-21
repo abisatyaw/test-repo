@@ -19,15 +19,33 @@ jobs:
           git config --global user.email "github-actions@github.com"
           git config --global user.name "GitHub Actions Bot"
 
+      
+      - name: Fetch All Branches and Ensure `main` & `dev` Exist
+        run: |
+          git fetch origin  # Ensure we fetch all remote branches
+          
+          # Create local tracking branches if they don't exist
+          if ! git show-ref --verify --quiet refs/heads/main; then
+            git branch main origin/main
+          fi
+          
+          if ! git show-ref --verify --quiet refs/heads/dev; then
+            git branch dev origin/dev
+          fi
+
       - name: Check for Differences Between `dev` and `main`
         id: check_diff
         run: |
-          git fetch origin dev main
-          DIFF=$(git diff --name-only main dev --)
+          DIFF=$(git diff --name-only main dev -- || true)
+
           if [[ -z "$DIFF" ]]; then
             echo "No differences detected. Exiting."
             exit 0
           fi
+    
+      - name: Debug - List Local and Remote Branches
+        run: |
+          git branch -a
 
       - name: Create Pull Request
         run: |
