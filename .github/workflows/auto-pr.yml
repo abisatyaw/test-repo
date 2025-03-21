@@ -105,7 +105,7 @@ jobs:
           $MERGED_PRS"
           Latest commit from @$GH_USERNAME: \n
 
-          gh pr edit $EXISTING_PR --body "$UPDATED_BODY"
+          gh pr edit $EXISTING_PR --body "$BODY"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
