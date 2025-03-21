@@ -29,4 +29,5 @@ jobs:
           branch: main
           title: "Auto PR: Merge dev into main"
           body: "This PR was automatically created because 'main' is behind 'dev' by ${{ env.BEHIND_COMMITS }} commits."
-          draft: true
+          draft: false
+          auto-merge: false
