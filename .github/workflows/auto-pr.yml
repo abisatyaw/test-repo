@@ -1,4 +1,4 @@
-name: Auto PR dev2main
+name: Auto Pull Request dev::main
 
 on:
   push:
@@ -60,18 +60,41 @@ jobs:
             echo "Could not determine GitHub username for committer."
             exit 1
           fi
+          # Get all merged PRs in `dev`
+          MERGED_PRS=$(git log --merges --pretty=format:"- %s" origin/main..origin/dev | grep -oE '#[0-9]+' || echo "No merged PRs.")
 
           echo "GH_USERNAME=$GH_USERNAME" >> $GITHUB_ENV
           echo "Committer GitHub Username: $GH_USERNAME"
+          echo "Merged: $MERGED_PRS" >> $GITHUB_ENV
 
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Check for Existing PR from dev to main
+        id: check_existing_pr
+        run: |
+          EXISTING_PR=$(gh pr list --base main --head dev --state open --json number --jq '.[0].number' || echo "")
+
+          if [[ -n "$EXISTING_PR" ]]; then
+            echo "Existing PR found: #$EXISTING_PR"
+            echo "EXISTING_PR=$EXISTING_PR" >> $GITHUB_ENV
+          else
+            echo "No existing PR found."
+            echo "EXISTING_PR=" >> $GITHUB_ENV
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
       - name: Create Pull Request
+        if: env.EXISTING_PR == ''
         run: |
           gh pr create --base main --head dev \
             --title "Auto PR: Merge dev into main" \
-            --body "This PR was automatically created for review. latest commit from $GH_USERNAME" \
+            --body "This PR was automatically created for review. \n 
+                    PRs Include : \n
+                    $MERGED_PRS
+                   " \
             --reviewer "abisatyaw" \
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
