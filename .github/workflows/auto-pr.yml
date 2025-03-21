@@ -23,7 +23,7 @@ jobs:
         id: check_diff
         run: |
           git fetch origin dev main
-          DIFF=$(git rev-list --left-right main...dev)
+          DIFF=$(git diff --name-only main dev --)
           if [[ -z "$DIFF" ]]; then
             echo "No differences detected. Exiting."
             exit 0
