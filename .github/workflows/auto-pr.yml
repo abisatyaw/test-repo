@@ -53,6 +53,5 @@ jobs:
             --title "Auto PR: Merge dev into main" \
             --body "This PR was automatically created for review." \
             --reviewer "abisatyaw" \
-            --label "auto-pr"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
