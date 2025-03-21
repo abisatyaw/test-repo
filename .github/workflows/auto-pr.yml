@@ -9,25 +9,32 @@ jobs:
   create-pr:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
+      - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Ensure full history is available
 
-      - name: Check if main is behind dev
-        id: check-diff
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions Bot"
+
+      - name: Check for Differences Between `dev` and `main`
+        id: check_diff
         run: |
           git fetch origin main dev
-          BEHIND_COMMITS=$(git rev-list --count origin/main..origin/dev)
-          echo "Behind commits: $BEHIND_COMMITS"
-          echo "BEHIND_COMMITS=$BEHIND_COMMITS" >> $GITHUB_ENV
+          DIFF=$(git rev-list --left-right main...dev)
+          if [[ -z "$DIFF" ]]; then
+            echo "No differences detected. Exiting."
+            exit 0
+          fi
 
-      - name: Create Pull Request 
-        if: env.BEHIND_COMMITS > 0
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: dev
-          branch: main
-          title: "Auto PR: Merge dev into main"
-          body: "This PR was automatically created because 'main' is behind 'dev' by ${{ env.BEHIND_COMMITS }} commits."
-          draft: false
-          auto-merge: false
+      - name: Create Pull Request
+        run: |
+          gh pr create --base main --head dev \
+            --title "Auto PR: Merge dev into main" \
+            --body "This PR was automatically created for review." \
+            --reviewer "abisatyaw" \
+            --label "auto-pr"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
