@@ -46,16 +46,23 @@ jobs:
       - name: Get Latest Committer on `dev`
         id: get_committer
         run: |
-          LATEST_COMMITTER=$(git log -1 --pretty=format:'%ae' origin/dev)
-          echo "Latest committer email: $LATEST_COMMITTER"
-          GH_USERNAME=$(gh api -X GET "users/$LATEST_COMMITTER" --jq ".login" || echo "")
-          
-          if [[ -z "$GH_USERNAME" ]]; then
+          # Get latest commit SHA from dev branch
+          LATEST_COMMIT_SHA=$(git rev-parse origin/dev)
+          echo "Latest commit SHA: $LATEST_COMMIT_SHA"
+
+          # Get committer's GitHub username from GitHub API
+          API_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/commits/$LATEST_COMMIT_SHA")
+
+          GH_USERNAME=$(echo "$API_RESPONSE" | jq -r '.author.login')
+
+          if [[ -z "$GH_USERNAME" || "$GH_USERNAME" == "null" ]]; then
             echo "Could not determine GitHub username for committer."
             exit 1
           fi
 
           echo "GH_USERNAME=$GH_USERNAME" >> $GITHUB_ENV
+          echo "Committer GitHub Username: $GH_USERNAME"
 
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -65,6 +72,6 @@ jobs:
           gh pr create --base main --head dev \
             --title "Auto PR: Merge dev into main" \
             --body "This PR was automatically created for review. latest commit from $GH_USERNAME" \
-            --reviewer "$GH_USERNAME"
+            --reviewer "abisatyaw" \
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
