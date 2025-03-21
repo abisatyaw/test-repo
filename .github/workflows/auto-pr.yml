@@ -1,4 +1,4 @@
-name: Auto PR dev2main
+name: Auto Pull Request dev::main
 
 on:
   push:
