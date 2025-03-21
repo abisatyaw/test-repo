@@ -67,7 +67,6 @@ jobs:
           MERGED_PRS=$(git log --merges --pretty=format:"- %s" origin/main..origin/dev | grep -oE '#[0-9]+' || echo "No merged PRs.")
 
           echo "Merged PRs: $MERGED_PRS"
-          echo "MERGED_PRS<<EOF" >> $GITHUB_ENV
           echo "$MERGED_PRS" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
       
@@ -92,22 +91,18 @@ jobs:
         run: |
           gh pr create --base main --head dev \
             --title "Auto PR: Merge dev into main" \
-            --body "This PR was automatically created for review. \n 
-                    PRs Include : \n
-                   " \
             --reviewer "$GH_USERNAME" \
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update Pull Request Description
         run: |
-          # Fetch current PR body
-          CURRENT_BODY=$(gh pr view $EXISTING_PR --json body --jq '.body')
-
           # Append latest commit to PR body
-          UPDATED_BODY="$CURRENT_BODY
-
-          Latest commit from @$GH_USERNAME: $MERGED_PRS"
+          BODY="
+          This PR was automatically created for review. \n 
+          PRs Include : \n
+          $MERGED_PRS"
+          Latest commit from @$GH_USERNAME: \n
 
           gh pr edit $EXISTING_PR --body "$UPDATED_BODY"
         env:
