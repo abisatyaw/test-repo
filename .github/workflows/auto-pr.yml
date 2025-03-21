@@ -1,0 +1,33 @@
+name: Auto PR dev2main
+
+on:
+  schedule:
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Check if main is behind dev
+        id: check-diff
+        run: |
+          git fetch origin main dev
+          BEHIND_COMMITS=$(git rev-list --count origin/main..origin/dev)
+          echo "Behind commits: $BEHIND_COMMITS"
+          echo "BEHIND_COMMITS=$BEHIND_COMMITS" >> $GITHUB_ENV
+
+      - name: Create Pull Request 
+        if: env.BEHIND_COMMITS > 0
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          branch: dev
+          title: "Auto PR: Merge dev into main"
+          body: "This PR was automatically created because 'main' is behind 'dev' by ${{ env.BEHIND_COMMITS }} commits."
+          draft: false
+          
