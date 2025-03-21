@@ -43,15 +43,28 @@ jobs:
             exit 0
           fi
     
-      - name: Debug - List Local and Remote Branches
+      - name: Get Latest Committer on `dev`
+        id: get_committer
         run: |
-          git branch -a
+          LATEST_COMMITTER=$(git log -1 --pretty=format:'%ae' origin/dev)
+          echo "Latest committer email: $LATEST_COMMITTER"
+          GH_USERNAME=$(gh api -X GET "users/$LATEST_COMMITTER" --jq ".login" || echo "")
+          
+          if [[ -z "$GH_USERNAME" ]]; then
+            echo "Could not determine GitHub username for committer."
+            exit 1
+          fi
+
+          echo "GH_USERNAME=$GH_USERNAME" >> $GITHUB_ENV
+
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Pull Request
         run: |
           gh pr create --base main --head dev \
             --title "Auto PR: Merge dev into main" \
-            --body "This PR was automatically created for review." \
-            --reviewer "abisatyaw" \
+            --body "This PR was automatically created for review. latest commit from $GH_USERNAME" \
+            --reviewer "$GH_USERNAME"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
