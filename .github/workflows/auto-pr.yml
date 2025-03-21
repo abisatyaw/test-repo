@@ -67,6 +67,7 @@ jobs:
           MERGED_PRS=$(git log --merges --pretty=format:"- %s" origin/main..origin/dev | grep -oE '#[0-9]+' || echo "No merged PRs.")
 
           echo "Merged PRs: $MERGED_PRS"
+          echo "MERGED_PRS<<EOF" >> $GITHUB_ENV
           echo "$MERGED_PRS" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
       
