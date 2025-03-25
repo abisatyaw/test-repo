@@ -1,33 +1,111 @@
-name: Auto PR dev2main
+name: Auto Pull Request dev → main
 
 on:
   push:
     branches:
       - dev
-
+ 
 jobs:
   create-pr:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
+      - name: Checkout Repository
         uses: actions/checkout@v4
-
-      - name: Check if main is behind dev
-        id: check-diff
-        run: |
-          git fetch origin main dev
-          BEHIND_COMMITS=$(git rev-list --count origin/main..origin/dev)
-          echo "Behind commits: $BEHIND_COMMITS"
-          echo "BEHIND_COMMITS=$BEHIND_COMMITS" >> $GITHUB_ENV
-
-      - name: Create Pull Request 
-        if: env.BEHIND_COMMITS > 0
-        uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: dev
-          branch: main
-          title: "Auto PR: Merge dev into main"
-          body: "This PR was automatically created because 'main' is behind 'dev' by ${{ env.BEHIND_COMMITS }} commits."
-          draft: false
-          auto-merge: false
+          fetch-depth: 0  # Ensure full history is available
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions Bot"
+
+      
+      - name: Fetch All Branches and Ensure `main` & `dev` Exist
+        run: |
+          git fetch origin  # Ensure we fetch all remote branches
+          
+          # Create local tracking branches if they don't exist
+          if ! git show-ref --verify --quiet refs/heads/main; then
+            git branch main origin/main
+          fi
+          
+          if ! git show-ref --verify --quiet refs/heads/dev; then
+            git branch dev origin/dev
+          fi
+
+      - name: Check for Differences Between `dev` and `main`
+        id: check_diff
+        run: |
+          DIFF=$(git diff --name-only main dev -- || true)
+
+          if [[ -z "$DIFF" ]]; then
+            echo "No differences detected. Exiting."
+            exit 0
+          fi
+    
+      - name: Get Latest Committer on `dev`
+        id: get_prs
+        run: |
+          # Get latest commit SHA from dev branch
+          LATEST_COMMIT_SHA=$(git rev-parse origin/dev)
+          echo "Latest commit SHA: $LATEST_COMMIT_SHA"
+
+          # Get committer's GitHub username
+          API_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/commits/$LATEST_COMMIT_SHA")
+          
+          GH_USERNAME=$(echo "$API_RESPONSE" | jq -r '.author.login')
+
+          if [[ -z "$GH_USERNAME" || "$GH_USERNAME" == "null" ]]; then
+            echo "Could not determine GitHub username for committer."
+            exit 1
+          fi
+          echo "GH_USERNAME=$GH_USERNAME" >> $GITHUB_ENV
+          echo "Committer GitHub Username: $GH_USERNAME"
+
+          # Get all merged PRs in `dev`
+          MERGED_PRS=$(git log --merges --pretty=format:"- %s" origin/main..origin/dev | grep -oE '#[0-9]+' || echo "No merged PRs.")
+
+          echo "Merged PRs: $MERGED_PRS"
+          echo "MERGED_PRS<<EOF" >> $GITHUB_ENV
+          echo "$MERGED_PRS" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+      
+      - name: Check for Existing PR from dev to main
+        id: check_existing_pr
+        run: |
+          EXISTING_PR=$(gh pr list --base main --head dev --state open --json number --jq '.[0].number' || echo "")
+
+          if [[ -n "$EXISTING_PR" ]]; then
+            echo "Existing PR found: #$EXISTING_PR"
+            echo "EXISTING_PR=$EXISTING_PR" >> $GITHUB_ENV
+          else
+            echo "No existing PR found."
+            echo "EXISTING_PR=" >> $GITHUB_ENV
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+      - name: Create Pull Request
+        if: env.EXISTING_PR == ''
+        run: |
+          gh pr create --base main --head dev \
+            --title "Auto PR: Merge dev into main" \
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Pull Request Description
+        run: |
+          # Append latest commit to PR body
+          BODY="
+          This PR was automatically created for review. \n 
+          PRs Include : \n
+          $MERGED_PRS
+          Latest commit from @$GH_USERNAME \n
+          "
+
+          gh pr edit $EXISTING_PR --body "$BODY" --add-reviewer "$GH_USERNAME" 
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
