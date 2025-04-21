@@ -4,3 +4,4 @@ print("commit3")
 
 print("feat_a_first commit")
 print("feat_a_second commit")
+print("feat_a_third commit")
